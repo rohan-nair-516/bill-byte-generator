@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { BillForm } from '../components/BillForm';
 import { BillPreview } from '../components/BillPreview';
 import { RestaurantHeader } from '../components/RestaurantHeader';
+import { Navigation } from '../components/Navigation';
 
 export interface BillItem {
   id: string;
@@ -71,6 +71,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50">
       <RestaurantHeader />
+      <Navigation />
       
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
