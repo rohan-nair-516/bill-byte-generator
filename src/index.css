@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -61,7 +62,7 @@
     --card-foreground: 210 40% 98%;
 
     --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover-foreground: 210 40%  98%;
 
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
@@ -100,4 +101,43 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Print styles for bill printing */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  #bill-content, #bill-content * {
+    visibility: visible;
+  }
+  
+  #bill-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    background: white !important;
+    color: black !important;
+    font-size: 12px !important;
+  }
+  
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  .print\:p-4 {
+    padding: 1rem !important;
+  }
+}
+
+/* Animation for smooth interactions */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
 }
