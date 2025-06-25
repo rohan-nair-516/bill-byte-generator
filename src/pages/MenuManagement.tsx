@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RestaurantHeader } from '../components/RestaurantHeader';
 import { Navigation } from '../components/Navigation';
 import { MenuEditor } from '../components/MenuEditor';
 import { MenuPreview } from '../components/MenuPreview';
+import { saveMenuItems, getMenuItems, saveMenuCategories, getMenuCategories } from '../utils/storage';
+import { useToast } from '@/hooks/use-toast';
 
 export interface MenuItem {
   id: string;
@@ -23,19 +25,35 @@ export interface MenuCategory {
 
 const MenuManagement = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] = useState<MenuCategory[]>([
-    { id: '1', name: 'Appetizers', description: 'Start your meal with these delicious appetizers', order: 1 },
-    { id: '2', name: 'Main Course', description: 'Our signature main dishes', order: 2 },
-    { id: '3', name: 'Desserts', description: 'Sweet endings to your meal', order: 3 },
-    { id: '4', name: 'Beverages', description: 'Refreshing drinks and beverages', order: 4 }
-  ]);
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const { toast } = useToast();
+
+  // Load saved data on component mount
+  useEffect(() => {
+    const savedItems = getMenuItems();
+    const savedCategories = getMenuCategories();
+    
+    setMenuItems(savedItems);
+    setCategories(savedCategories);
+    
+    if (savedItems.length > 0) {
+      toast({
+        title: "Menu Loaded",
+        description: `${savedItems.length} menu items loaded successfully.`,
+      });
+    }
+  }, [toast]);
 
   const handleUpdateItems = (items: MenuItem[]) => {
     setMenuItems(items);
+    saveMenuItems(items);
+    console.log('Menu items auto-saved:', items.length);
   };
 
   const handleUpdateCategories = (newCategories: MenuCategory[]) => {
     setCategories(newCategories);
+    saveMenuCategories(newCategories);
+    console.log('Menu categories auto-saved:', newCategories.length);
   };
 
   return (

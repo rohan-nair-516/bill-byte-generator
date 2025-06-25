@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2, X } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Save } from 'lucide-react';
 import {MenuItem, MenuCategory } from '../pages/MenuManagement';
 import { useToast } from '@/hooks/use-toast';
 
@@ -55,8 +55,8 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
       );
       onUpdateItems(updatedItems);
       toast({
-        title: "Item Updated",
-        description: "Menu item has been updated successfully.",
+        title: "Item Updated & Saved",
+        description: "Menu item has been updated and auto-saved successfully.",
       });
     } else {
       // Add new item
@@ -70,8 +70,8 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
       };
       onUpdateItems([...menuItems, newItem]);
       toast({
-        title: "Item Added",
-        description: "New menu item has been added successfully.",
+        title: "Item Added & Saved",
+        description: "New menu item has been added and auto-saved successfully.",
       });
     }
 
@@ -88,8 +88,8 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
     const updatedItems = menuItems.filter(item => item.id !== itemId);
     onUpdateItems(updatedItems);
     toast({
-      title: "Item Deleted",
-      description: "Menu item has been deleted successfully.",
+      title: "Item Deleted & Saved",
+      description: "Menu item has been deleted and changes auto-saved.",
     });
   };
 
@@ -111,8 +111,10 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
       <Card className="border-orange-200">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Save className="w-5 h-5 text-orange-600" />
               {editingItem ? 'Edit Menu Item' : 'Add New Item'}
+              <span className="text-sm font-normal text-gray-500">(Auto-Save)</span>
             </CardTitle>
             {!showAddForm && (
               <Button 
@@ -205,7 +207,8 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
 
               <div className="flex gap-2">
                 <Button type="submit" className="bg-orange-500 hover:bg-orange-600">
-                  {editingItem ? 'Update Item' : 'Add Item'}
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingItem ? 'Update & Save' : 'Add & Save'}
                 </Button>
                 <Button type="button" onClick={resetForm} variant="outline">
                   Cancel

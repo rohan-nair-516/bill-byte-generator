@@ -1,11 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Store, User, Hash, Percent } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Trash2, Plus, FileText, Share } from 'lucide-react';
 import { BillData, BillItem } from '../pages/Index';
+import { saveRestaurantProfile, getRestaurantProfile } from '../utils/storage';
+import { useToast } from '@/hooks/use-toast';
 
 interface BillFormProps {
   billData: BillData;
@@ -20,14 +23,40 @@ export const BillForm: React.FC<BillFormProps> = ({
   calculateTotals,
   onPreview
 }) => {
-  const [newItem, setNewItem] = useState({
-    name: '',
-    quantity: 1,
-    price: 0
-  });
+  const [newItem, setNewItem] = useState({ name: '', quantity: 1, price: 0 });
+  const { toast } = useToast();
+
+  // Load saved restaurant profile on component mount
+  useEffect(() => {
+    const savedProfile = getRestaurantProfile();
+    if (savedProfile) {
+      updateBillData({
+        restaurantInfo: savedProfile
+      });
+      toast({
+        title: "Profile Loaded",
+        description: "Restaurant profile loaded successfully.",
+      });
+    }
+  }, [updateBillData, toast]);
+
+  // Auto-save restaurant profile when it changes
+  useEffect(() => {
+    const { name, address, phone, gstNumber } = billData.restaurantInfo;
+    if (name || address || phone || gstNumber) {
+      saveRestaurantProfile(billData.restaurantInfo);
+    }
+  }, [billData.restaurantInfo]);
 
   const addItem = () => {
-    if (!newItem.name || newItem.price <= 0) return;
+    if (!newItem.name || newItem.price <= 0) {
+      toast({
+        title: "Invalid Item",
+        description: "Please enter valid item name and price.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const item: BillItem = {
       id: Date.now().toString(),
@@ -39,8 +68,12 @@ export const BillForm: React.FC<BillFormProps> = ({
 
     const updatedItems = [...billData.items, item];
     calculateTotals(updatedItems, billData.gstRate);
-    
     setNewItem({ name: '', quantity: 1, price: 0 });
+    
+    toast({
+      title: "Item Added",
+      description: `${item.name} added to bill.`,
+    });
   };
 
   const removeItem = (id: string) => {
@@ -48,45 +81,58 @@ export const BillForm: React.FC<BillFormProps> = ({
     calculateTotals(updatedItems, billData.gstRate);
   };
 
-  const updateGSTRate = (rate: number) => {
-    updateBillData({ gstRate: rate });
-    calculateTotals(billData.items, rate);
+  const updateRestaurantInfo = (field: string, value: string) => {
+    updateBillData({
+      restaurantInfo: {
+        ...billData.restaurantInfo,
+        [field]: value
+      }
+    });
+  };
+
+  const shareViaWhatsApp = () => {
+    const message = `Bill from ${billData.restaurantInfo.name}\n` +
+      `Table: ${billData.tableNumber}\n` +
+      `Date: ${billData.date}\n\n` +
+      billData.items.map(item => 
+        `${item.name} x${item.quantity} - ₹${item.total}`
+      ).join('\n') +
+      `\n\nSubtotal: ₹${billData.subtotal}\n` +
+      `GST (${billData.gstRate}%): ₹${billData.gstAmount.toFixed(2)}\n` +
+      `Total: ₹${billData.grandTotal.toFixed(2)}\n\n` +
+      `Thank you for dining with us!`;
+    
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   return (
     <div className="space-y-6">
       {/* Restaurant Information */}
-      <Card className="border-orange-200 shadow-lg">
-        <CardHeader className="bg-orange-50">
-          <CardTitle className="flex items-center gap-2 text-orange-800">
-            <Store className="w-5 h-5" />
-            Restaurant Information
-          </CardTitle>
+      <Card className="border-orange-200">
+        <CardHeader>
+          <CardTitle className="text-orange-800">Restaurant Information</CardTitle>
         </CardHeader>
-        <CardContent className="p-6 space-y-4">
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="restaurantName">Restaurant Name</Label>
+              <Label htmlFor="restaurant-name">Restaurant Name</Label>
               <Input
-                id="restaurantName"
+                id="restaurant-name"
+                type="text"
                 value={billData.restaurantInfo.name}
-                onChange={(e) => updateBillData({
-                  restaurantInfo: { ...billData.restaurantInfo, name: e.target.value }
-                })}
+                onChange={(e) => updateRestaurantInfo('name', e.target.value)}
                 placeholder="Enter restaurant name"
-                className="border-orange-200 focus:border-orange-400"
               />
             </div>
             <div>
               <Label htmlFor="phone">Phone Number</Label>
               <Input
                 id="phone"
+                type="tel"
                 value={billData.restaurantInfo.phone}
-                onChange={(e) => updateBillData({
-                  restaurantInfo: { ...billData.restaurantInfo, phone: e.target.value }
-                })}
+                onChange={(e) => updateRestaurantInfo('phone', e.target.value)}
                 placeholder="Enter phone number"
-                className="border-orange-200 focus:border-orange-400"
               />
             </div>
           </div>
@@ -94,97 +140,71 @@ export const BillForm: React.FC<BillFormProps> = ({
             <Label htmlFor="address">Address</Label>
             <Input
               id="address"
+              type="text"
               value={billData.restaurantInfo.address}
-              onChange={(e) => updateBillData({
-                restaurantInfo: { ...billData.restaurantInfo, address: e.target.value }
-              })}
+              onChange={(e) => updateRestaurantInfo('address', e.target.value)}
               placeholder="Enter restaurant address"
-              className="border-orange-200 focus:border-orange-400"
             />
           </div>
           <div>
-            <Label htmlFor="gstNumber">GST Number</Label>
+            <Label htmlFor="gst">GST Number</Label>
             <Input
-              id="gstNumber"
+              id="gst"
+              type="text"
               value={billData.restaurantInfo.gstNumber}
-              onChange={(e) => updateBillData({
-                restaurantInfo: { ...billData.restaurantInfo, gstNumber: e.target.value }
-              })}
+              onChange={(e) => updateRestaurantInfo('gstNumber', e.target.value)}
               placeholder="Enter GST number"
-              className="border-orange-200 focus:border-orange-400"
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Bill Details */}
-      <Card className="border-orange-200 shadow-lg">
-        <CardHeader className="bg-orange-50">
-          <CardTitle className="flex items-center gap-2 text-orange-800">
-            <User className="w-5 h-5" />
-            Bill Details
-          </CardTitle>
+      <Card className="border-orange-200">
+        <CardHeader>
+          <CardTitle className="text-orange-800">Bill Details</CardTitle>
         </CardHeader>
-        <CardContent className="p-6 space-y-4">
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="tableNumber" className="flex items-center gap-2">
-                <Hash className="w-4 h-4" />
-                Table Number
-              </Label>
+              <Label htmlFor="table-number">Table Number</Label>
               <Input
-                id="tableNumber"
+                id="table-number"
+                type="text"
                 value={billData.tableNumber}
                 onChange={(e) => updateBillData({ tableNumber: e.target.value })}
                 placeholder="Enter table number"
-                className="border-orange-200 focus:border-orange-400"
               />
             </div>
             <div>
-              <Label htmlFor="customerName">Customer Name (Optional)</Label>
+              <Label htmlFor="customer-name">Customer Name (Optional)</Label>
               <Input
-                id="customerName"
+                id="customer-name"
+                type="text"
                 value={billData.customerName}
                 onChange={(e) => updateBillData({ customerName: e.target.value })}
                 placeholder="Enter customer name"
-                className="border-orange-200 focus:border-orange-400"
               />
             </div>
-          </div>
-          <div className="w-32">
-            <Label htmlFor="gstRate" className="flex items-center gap-2">
-              <Percent className="w-4 h-4" />
-              GST Rate (%)
-            </Label>
-            <Input
-              id="gstRate"
-              type="number"
-              value={billData.gstRate}
-              onChange={(e) => updateGSTRate(parseFloat(e.target.value) || 0)}
-              min="0"
-              max="100"
-              step="0.1"
-              className="border-orange-200 focus:border-orange-400"
-            />
           </div>
         </CardContent>
       </Card>
 
       {/* Add Items */}
-      <Card className="border-orange-200 shadow-lg">
-        <CardHeader className="bg-orange-50">
+      <Card className="border-orange-200">
+        <CardHeader>
           <CardTitle className="text-orange-800">Add Items</CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="md:col-span-2">
-              <Label htmlFor="itemName">Item Name</Label>
+              <Label htmlFor="item-name">Item Name</Label>
               <Input
-                id="itemName"
+                id="item-name"
+                type="text"
                 value={newItem.name}
                 onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
                 placeholder="Enter item name"
-                className="border-orange-200 focus:border-orange-400"
               />
             </div>
             <div>
@@ -195,7 +215,6 @@ export const BillForm: React.FC<BillFormProps> = ({
                 value={newItem.quantity}
                 onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
                 min="1"
-                className="border-orange-200 focus:border-orange-400"
               />
             </div>
             <div>
@@ -207,15 +226,10 @@ export const BillForm: React.FC<BillFormProps> = ({
                 onChange={(e) => setNewItem({ ...newItem, price: parseFloat(e.target.value) || 0 })}
                 min="0"
                 step="0.01"
-                className="border-orange-200 focus:border-orange-400"
               />
             </div>
           </div>
-          <Button 
-            onClick={addItem}
-            className="bg-orange-500 hover:bg-orange-600 text-white"
-            disabled={!newItem.name || newItem.price <= 0}
-          >
+          <Button onClick={addItem} className="w-full bg-orange-500 hover:bg-orange-600">
             <Plus className="w-4 h-4 mr-2" />
             Add Item
           </Button>
@@ -224,28 +238,25 @@ export const BillForm: React.FC<BillFormProps> = ({
 
       {/* Items List */}
       {billData.items.length > 0 && (
-        <Card className="border-orange-200 shadow-lg">
-          <CardHeader className="bg-orange-50">
+        <Card className="border-orange-200">
+          <CardHeader>
             <CardTitle className="text-orange-800">Bill Items</CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent>
             <div className="space-y-3">
               {billData.items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                <div key={item.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                   <div className="flex-1">
-                    <div className="font-medium text-gray-800">{item.name}</div>
-                    <div className="text-sm text-gray-600">
-                      {item.quantity} × ₹{item.price.toFixed(2)}
-                    </div>
+                    <span className="font-medium">{item.name}</span>
+                    <span className="text-gray-600 ml-2">x{item.quantity}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-lg text-gray-800">
-                      ₹{item.total.toFixed(2)}
-                    </span>
+                    <span className="font-bold text-orange-600">₹{item.total}</span>
                     <Button
                       onClick={() => removeItem(item.id)}
-                      variant="destructive"
                       size="sm"
+                      variant="outline"
+                      className="text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -253,33 +264,52 @@ export const BillForm: React.FC<BillFormProps> = ({
                 </div>
               ))}
             </div>
-            
-            {/* Total Summary */}
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="flex justify-between text-lg mb-2">
-                <span>Subtotal:</span>
-                <span>₹{billData.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-lg mb-2">
-                <span>GST ({billData.gstRate}%):</span>
-                <span>₹{billData.gstAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-xl font-bold text-orange-600 border-t pt-2">
-                <span>Grand Total:</span>
-                <span>₹{billData.grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
-
-            <Button 
-              onClick={onPreview}
-              className="w-full mt-6 bg-orange-500 hover:bg-orange-600 text-white text-lg py-3"
-              disabled={billData.items.length === 0}
-            >
-              Generate Bill
-            </Button>
           </CardContent>
         </Card>
       )}
+
+      {/* GST Settings */}
+      <Card className="border-orange-200">
+        <CardHeader>
+          <CardTitle className="text-orange-800">Tax Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div>
+            <Label htmlFor="gst-rate">GST Rate (%)</Label>
+            <Select
+              value={billData.gstRate.toString()}
+              onValueChange={(value) => {
+                const rate = parseFloat(value);
+                updateBillData({ gstRate: rate });
+                calculateTotals(billData.items, rate);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">0% (No Tax)</SelectItem>
+                <SelectItem value="5">5% GST</SelectItem>
+                <SelectItem value="12">12% GST</SelectItem>
+                <SelectItem value="18">18% GST</SelectItem>
+                <SelectItem value="28">28% GST</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Actions */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Button onClick={onPreview} className="flex-1 bg-orange-500 hover:bg-orange-600">
+          <FileText className="w-4 h-4 mr-2" />
+          Preview Bill
+        </Button>
+        <Button onClick={shareViaWhatsApp} variant="outline" className="flex-1 border-orange-300 hover:bg-orange-50">
+          <Share className="w-4 h-4 mr-2" />
+          Share via WhatsApp
+        </Button>
+      </div>
     </div>
   );
 };
